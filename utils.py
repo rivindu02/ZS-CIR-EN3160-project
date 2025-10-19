@@ -70,13 +70,24 @@ def get_preprocess(cfg, model, input_dim):
 #         raise ValueError("laion_type should be in ['laion_template', 'laion_llm', 'laion_combined']")
 
 #     return relative_train_dataset, relative_val_dataset, classic_val_dataset
-def get_laion_cirr_dataset(preprocess, laion_type, skip_eval=False):
-    train = LaionCIRDataset(preprocess, laion_type)
+def get_laion_cirr_dataset(preprocess, laion_type, skip_eval=False, laion_image_root=None):
+    # -------- training set from Laion-CIR --------
+    if laion_type == 'laion_template':
+        relative_train_dataset = LaionDataset_Template('train', preprocess, image_root=laion_image_root)
+    elif laion_type == 'laion_llm':
+        relative_train_dataset = LaionDataset_LLM('train', preprocess, image_root=laion_image_root)
+    elif laion_type == 'laion_combined':
+        relative_train_dataset = LaionDataset_Combined('train', preprocess, image_root=laion_image_root)
+    else:
+        raise ValueError("laion_type must be one of ['laion_template', 'laion_llm', 'laion_combined']")
+
     if skip_eval:
-        return train, None, None
-    val = CIRRDataset('val', 'relative', preprocess)
-    classic = CIRRDataset('val', 'classic', preprocess)
-    return train, val, classic
+        return relative_train_dataset, None, None
+
+    # -------- only if you later decide to evaluate --------
+    relative_val_dataset = CIRRDataset('val', 'relative', preprocess)
+    classic_val_dataset  = CIRRDataset('val', 'classic',  preprocess)
+    return relative_train_dataset, relative_val_dataset, classic_val_dataset
 
 
 

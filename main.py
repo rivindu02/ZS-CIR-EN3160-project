@@ -48,43 +48,39 @@ def main(cfg):
     
     # Dataset loading: TRAIN ONLY
     if cfg.skip_eval:
-        # Only training on Laion-CIR triplets
-        # If you have get_laion_only_dataset implemented:
-        # relative_train_dataset = get_laion_only_dataset(preprocess, cfg.laion_type)
-        # Otherwise use get_laion_cirr_dataset but take only first return
-        relative_train_dataset, _, _ = get_laion_cirr_dataset(preprocess, cfg.laion_type,  skip_eval=True)
+        relative_train_dataset, _, _ = get_laion_cirr_dataset(
+            preprocess,
+            cfg.laion_type,
+            skip_eval=True,
+            laion_image_root=cfg.laion_image_root
+        )
         relative_val_dataset = None
-        classic_val_dataset = None
+        classic_val_dataset  = None
     else:
-        # Evaluation branch (you don’t use now)
-        relative_train_dataset, relative_val_dataset, classic_val_dataset = get_laion_cirr_dataset(preprocess, cfg.laion_type, skip_eval=False)
-    
-    # Build DataLoader for training
-    assert relative_train_dataset is not None, "Training dataset not loaded!"
+        relative_train_dataset, relative_val_dataset, classic_val_dataset = get_laion_cirr_dataset(
+            preprocess,
+            cfg.laion_type,
+            skip_eval=False,
+            laion_image_root=cfg.laion_image_root
+        )
+
+    # Build DataLoader (use small num_workers on Colab)
+    nw = getattr(cfg, "num_workers", 2)
     relative_train_loader = DataLoader(
         dataset=relative_train_dataset,
         batch_size=cfg.batch_size,
-        num_workers=multiprocessing.cpu_count(),
+        num_workers=nw,
         pin_memory=True,
         collate_fn=collate_fn,
         drop_last=True,
         shuffle=True
     )
-    
-    # Prepare optional components for evaluation (will be None in train-only mode)
+
+    # Skip any index feature extraction when eval is disabled
     kwargs = {}
-    if (not cfg.skip_eval) and (cfg.dataset.lower() == 'cirr') and (cfg.encoder in ['text','neither']):
-        # Only compute index features if eval is going to happen
-        val_index_features, val_index_names, val_total_index_features = extract_index_features(
-            classic_val_dataset, model, return_local=False
-        )
-        kwargs['val_index_features'] = val_index_features
-        kwargs['val_index_names'] = val_index_names
-        kwargs['val_total_index_features'] = val_total_index_features
-    else:
-        kwargs['val_index_features'] = None
-        kwargs['val_index_names'] = None
-        kwargs['val_total_index_features'] = None
+    kwargs['val_index_features'] = None
+    kwargs['val_index_names'] = None
+    kwargs['val_total_index_features'] = None
     
     # Setup optimizer, scheduler, loss
     optimizer = get_optimizer(model, cfg)

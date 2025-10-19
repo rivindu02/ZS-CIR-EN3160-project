@@ -101,7 +101,7 @@ class Trainer():
             target_images = target_images.to(self.device, non_blocking=True)
 
             if not self.use_amp:
-                logits = self.model(reference_images, captions, target_images)
+                logits = self.model(captions, reference_images, target_images)
                 ground_truth = torch.arange(images_in_batch, dtype=torch.long, device=self.device)
                 loss = self.criterion(logits, ground_truth)
 

@@ -2,30 +2,50 @@ import torch
 import torch.nn as nn
 from model.clip import clip 
 import torch.nn.functional as F
-from model.BLIP.models.blip_retrieval import blip_retrieval
-
+import re
+#from model.BLIP.models.blip_retrieval import blip_retrieval
 
 class TransAgg(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.device = cfg.device
-        self.model_name = cfg.model_name
+        self.model_name = cfg.model_name.lower()
+
         if self.model_name == 'blip':
+            if blip_retrieval is None:
+                raise ImportError("BLIP dependencies unavailable; install compatible transformers or patch BLIP first.")
             self.pretrained_model = blip_retrieval(pretrained="/GPFS/data/yikunliu/cache/model_base_retrieval_coco.pth")
             self.feature_dim = 256
-        elif self.model_name == 'clip-Vit-B/32':
-            self.pretrained_model, self.preprocess = clip.load("/GPFS/data/yikunliu/cache/ViT-B-32.pt", device=cfg.device, jit=False)
-            self.feature_dim = self.pretrained_model.visual.output_dim 
-        elif self.model_name == 'clip-Vit-L/14':
-            self.pretrained_model, self.preprocess = clip.load("/GPFS/data/yikunliu/cache/ViT-L-14.pt", device=cfg.device, jit=False)
-            self.feature_dim = self.pretrained_model.visual.output_dim 
-        encoder_layer = nn.TransformerEncoderLayer(d_model=self.feature_dim, nhead=8, dropout=cfg.dropout, batch_first=True, norm_first=True, activation="gelu")
+
+        elif 'clip-vit-b/32' in self.model_name or self.model_name.endswith('vit-b/32'):
+            self.pretrained_model, self.preprocess = clip.load("ViT-B/32", device=cfg.device, jit=False)
+            self.feature_dim = self.pretrained_model.visual.output_dim
+
+        elif 'clip-vit-l/14' in self.model_name or self.model_name.endswith('vit-l/14'):
+            self.pretrained_model, self.preprocess = clip.load("ViT-L/14", device=cfg.device, jit=False)
+            self.feature_dim = self.pretrained_model.visual.output_dim
+
+        else:
+            # generic CLIP path (fallback)
+            if self.model_name.startswith('clip-'):
+                canon = cfg.model_name.split('clip-')[1]
+                self.pretrained_model, self.preprocess = clip.load(canon, device=cfg.device, jit=False)
+                self.feature_dim = self.pretrained_model.visual.output_dim
+            else:
+                raise ValueError(f"Unsupported model_name: {cfg.model_name}")
+
+        # transformer fusion part (keep as is)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=self.feature_dim, nhead=8,
+            dropout=cfg.dropout, batch_first=True,
+            norm_first=True, activation="gelu"
+        )
         self.fusion = nn.TransformerEncoder(encoder_layer, num_layers=cfg.num_layers)
         self.logit_scale = 100
         self.dropout = nn.Dropout(cfg.dropout)
-        self.combiner_layer = nn.Linear(self.feature_dim + self.feature_dim, (self.feature_dim + self.feature_dim) * 4)
+        self.combiner_layer = nn.Linear(self.feature_dim * 2, self.feature_dim * 8)
         self.weighted_layer = nn.Linear(self.feature_dim, 3)
-        self.output_layer = nn.Linear((self.feature_dim + self.feature_dim) * 4, self.feature_dim)
+        self.output_layer = nn.Linear(self.feature_dim * 8, self.feature_dim)
         self.sep_token = nn.Parameter(torch.randn(1, 1, self.feature_dim))
 
 

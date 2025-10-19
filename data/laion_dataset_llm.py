@@ -8,6 +8,7 @@ data_file_path = os.path.dirname(__file__)
 Image.MAX_IMAGE_PIXELS = 2300000000
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+
 def _resolve_with_ext(root, stem):
     """
     Given an ID '0001234' (no ext), return an existing path by trying
@@ -21,6 +22,7 @@ def _resolve_with_ext(root, stem):
         if os.path.exists(cand):
             return cand
     return None  # not found
+
 
 class LaionDataset_LLM(Dataset):
     def __init__(self, split: str, preprocess: callable, image_root: str):
@@ -39,8 +41,13 @@ class LaionDataset_LLM(Dataset):
 
         # Keys are reference IDs (strings); values contain tgt_image_id & caption
         for ref_key, val in image_ids_map.items():
-            ref_id = str(ref_key).zfill(7)
-            tgt_id = str(val['tgt_image_id']).zfill(7)
+            # --- FIXED LOGIC: handle both numeric and already-padded string IDs ---
+            ref_id_raw = str(ref_key)
+            tgt_id_raw = str(val['tgt_image_id'])
+
+            ref_id = ref_id_raw.zfill(7) if len(ref_id_raw) < 7 else ref_id_raw
+            tgt_id = tgt_id_raw.zfill(7) if len(tgt_id_raw) < 7 else tgt_id_raw
+            # ---------------------------------------------------------------------
 
             ref_path = _resolve_with_ext(self.image_root, ref_id)
             tgt_path = _resolve_with_ext(self.image_root, tgt_id)
@@ -69,8 +76,8 @@ class LaionDataset_LLM(Dataset):
         ref_path, tgt_path, caption = self.samples[index]
 
         reference_image = PIL.Image.open(ref_path).convert("RGB")
-        target_image    = PIL.Image.open(tgt_path).convert("RGB")
+        target_image = PIL.Image.open(tgt_path).convert("RGB")
 
         reference_image = self.preprocess(reference_image)
-        target_image    = self.preprocess(target_image)
+        target_image = self.preprocess(target_image)
         return reference_image, target_image, caption

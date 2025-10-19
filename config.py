@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 class Config:
     # ---- paths & dataset selection ----
     base_path: str = "/content/drive/MyDrive/Zero-shot"
-    laion_type: str = "laion_llm"  # 'laion_llm' | 'laion_template' | 'laion_combined'
+    laion_type: str = "laion_combined"  # 'laion_llm' | 'laion_template' | 'laion_combined'
     # If your images are directly under the folder (no /images subfolder), leave as below.
     # If they're under ".../laion_chatgpt_16k/images", append "/images".
     laion_image_root: str = field(init=False)
@@ -26,7 +26,7 @@ class Config:
     learning_rate: float = 1e-4
     weight_decay: float = 0.05
     adam_epsilon: float = 1e-8
-    num_epochs: int = 5
+    num_epochs: int = 10
     save_best: bool = True
     use_amp: bool = True
     num_workers: int = 2            # safer on Colab
@@ -41,4 +41,4 @@ class Config:
 
     def __post_init__(self):
         # images are inside /Zero-shot/laion_chatgpt_16k  (change to ".../images" if that's your layout)
-        self.laion_image_root = f"{self.base_path}/laion_chatgpt_16k"
+        self.laion_image_root = f"{self.base_path}/laion_cir_combined"

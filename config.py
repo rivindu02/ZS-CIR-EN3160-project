@@ -12,6 +12,7 @@ class Config:
     skip_eval: bool = True
     dataset: str = "laion"         # we’re training on Laion only
 
+
     # ---- model / training ----
     dropout: float = 0.5
     num_layers: int = 2

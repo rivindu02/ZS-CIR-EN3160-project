@@ -16,6 +16,11 @@ def get_model(cfg):
     model = model.to(cfg.device)
     return model
 
+"""Controls which pretrained submodules are frozen:
+If encoder == 'text': freezes most visual encoder parameters (for BLIP or CLIP variants) so only text encoder is fine-tuned (and other parts of the model).
+If encoder == 'both': leaves both encoders trainable.
+If encoder == 'neither': freezes all pretrained_model parameters.
+This config affects which .requires_grad are True and thus which params appear in optimizer groups."""
 def set_grad(cfg, model):
     if cfg.encoder == 'text':
         print('Only the text encoder will be fine-tuned')
@@ -147,6 +152,11 @@ def extract_index_features(dataset, model, return_local=True):
     return index_features, index_names, index_total_features
 
 
+
+""""Divides parameters into two groups:
+model parameters that require grad and are not part of the pretrained model -> use cfg.learning_rate and cfg.weight_decay.
+parameters that require grad and are part of the pretrained model -> same weight_decay but a small lr = 1e-6 (hard-coded).
+Uses AdamW with eps=cfg.adam_epsilon and lr=cfg.learning_rate for group 1."""
 def get_optimizer(model, cfg):
     pretrained_params = list(map(id, model.pretrained_model.parameters()))
     optimizer_grouped_parameters = [

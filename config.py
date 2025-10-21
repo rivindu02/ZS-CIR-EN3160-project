@@ -6,8 +6,6 @@ class Config:
     # ---- paths & dataset selection ----
     base_path: str = "/content/drive/MyDrive/Zero-shot"
     laion_type: str = "laion_combined"  # 'laion_llm' | 'laion_template' | 'laion_combined'
-    # If your images are directly under the folder (no /images subfolder), leave as below.
-    # If they're under ".../laion_chatgpt_16k/images", append "/images".
     laion_image_root: str = field(init=False)
 
     # Train-only flow

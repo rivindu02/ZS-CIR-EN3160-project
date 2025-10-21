@@ -71,7 +71,6 @@ inference/
 *.jpg
 *.jpeg
 *.gif
-*.mp4
 *.avi
 
 # === Temporary / Cache ===
